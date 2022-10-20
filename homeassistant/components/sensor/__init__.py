@@ -477,7 +477,7 @@ class SensorEntity(Entity):
     def get_initial_entity_options(self) -> er.EntityOptionsType | None:
         """Return initial entity options.
 
-        These will be stored in the entity registry the first time the  entity is seen,
+        These will be stored in the entity registry the first time the entity is seen,
         and then never updated.
         """
         suggested_unit_of_measurement = self.suggested_unit_of_measurement
