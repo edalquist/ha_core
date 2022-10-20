@@ -481,11 +481,10 @@ class SensorEntity(Entity):
         and then never updated.
         """
         suggested_unit_of_measurement = self.suggested_unit_of_measurement
-        native_unit_of_measurement = self.native_unit_of_measurement
 
         if suggested_unit_of_measurement is None:
             suggested_unit_of_measurement = self.hass.config.units.get_converted_unit(
-                self.device_class, native_unit_of_measurement
+                self.device_class, self.native_unit_of_measurement
             )
 
         if suggested_unit_of_measurement is None:
