@@ -547,12 +547,12 @@ class SensorEntity(Entity):
         for example to make a temperature sensor display in °C even if the configured
         unit system prefers °F.
 
-        For sensors without a `unique_id`, this takes precedence over legacy 
+        For sensors without a `unique_id`, this takes precedence over legacy
         temperature conversion rules only.
-        
-        For sensors with a `unique_id`, this is applied only if the unit is not set by the user, 
+
+        For sensors with a `unique_id`, this is applied only if the unit is not set by the user,
         and takes precedence over automatic device-class conversion rules.
-        
+
         Note:
             suggested_unit_of_measurement is stored in the entity registry the first time
             the entity is seen, and then never updated.
