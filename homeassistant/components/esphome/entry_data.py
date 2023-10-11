@@ -83,6 +83,15 @@ class ESPHomeStorage(Store[StoreData]):
     """ESPHome Storage."""
 
 
+def unique_id_is_new_format(new_unique_id_prefix: str, unique_id: str) -> bool:
+    """Return True if the unique id is in the new format."""
+    if unique_id.count("-") == 2 and unique_id.startswith(new_unique_id_prefix):
+        split_unique_id = unique_id.split("-", 2)
+        if split_unique_id[1] != "wifiinfo":
+            return True
+    return False
+
+
 @dataclass(slots=True)
 class RuntimeEntryData:
     """Store runtime data for esphome config entries."""
@@ -248,12 +257,13 @@ class RuntimeEntryData:
     def _migrate_unique_ids_if_needed(
         self,
         ent_reg: er.EntityRegistry,
+        new_unique_id_prefix: str,
         possible_unique_id_migrations: dict[str, EntityInfo],
     ) -> None:
         """Migrate unique ids if needed."""
         assert self.device_info is not None
         old_unique_id_prefix = self.device_info.name
-        possible_special_cases = set()
+        special_cases: list[str] = []
         for unique_id, info in possible_unique_id_migrations.items():
             platform = INFO_TYPE_TO_PLATFORM[type(info)]
             _, esphome_platform, object_id = unique_id.split("-", 2)
@@ -282,22 +292,17 @@ class RuntimeEntryData:
             # <mac>-wifiinfo-macadr
             # <mac>-wifisignal
             #
-            possible_special_cases.add(unique_id)
+            special_cases.append(unique_id)
 
-        if not possible_special_cases:
+        if not special_cases:
             return
 
-        new_unique_id_prefix = f"{dr.format_mac(self.device_info.mac_address).upper()}-"
-        current_entries_not_in_new_format: dict[str, er.RegistryEntry] = {}
-        entry_id = self.entry_id
-        for entry_id, entry in ent_reg.entities.items():
-            unique_id = entry.unique_id
-            if (
-                entry.config_entry_id == entry_id
-                and unique_id.count("-") != 2
-                and not unique_id.startswith(new_unique_id_prefix)
-            ):
-                current_entries_not_in_new_format[entry_id] = entry
+        for unique_id in special_cases:
+            if "-" not in unique_id:
+                _LOGGER.warning(
+                    "Skipping special case unique id migration for %s", unique_id
+                )
+                continue
 
         # TODO: handle special cases here
 
@@ -324,7 +329,6 @@ class RuntimeEntryData:
                 needed_platforms.add(Platform.SELECT)
 
         possible_unique_id_migrations: dict[str, EntityInfo] = {}
-
         for info in infos:
             platform = INFO_TYPE_TO_PLATFORM[type(info)]
             needed_platforms.add(platform)
@@ -333,17 +337,19 @@ class RuntimeEntryData:
             # then we need to migrate it from the old format if there is an entity with the old format
             if (
                 new_unique_id_prefix
-                and unique_id.startswith(new_unique_id_prefix)
-                and unique_id.count("-") == 2
-                and not ent_reg.async_get_entity_id(platform, DOMAIN, info.unique_id)
+                and not unique_id_is_new_format(new_unique_id_prefix, unique_id)
+                and not ent_reg.async_get_entity_id(platform, DOMAIN, unique_id)
             ):
                 possible_unique_id_migrations[unique_id] = info
 
         if possible_unique_id_migrations:
+            assert new_unique_id_prefix
             _LOGGER.warning(
                 "Possible unique id migrations: %s", possible_unique_id_migrations
             )
-            self._migrate_unique_ids_if_needed(ent_reg, possible_unique_id_migrations)
+            self._migrate_unique_ids_if_needed(
+                ent_reg, new_unique_id_prefix, possible_unique_id_migrations
+            )
 
         await self._ensure_platforms_loaded(hass, entry, needed_platforms)
 
