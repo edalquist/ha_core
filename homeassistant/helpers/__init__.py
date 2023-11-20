@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-import re
 from typing import TYPE_CHECKING
 
 from homeassistant.const import CONF_PLATFORM
@@ -42,5 +41,4 @@ def extract_domain_configs(config: ConfigType, domain: str) -> Sequence[str]:
 
     Async friendly.
     """
-    pattern = re.compile(rf"^{domain}(| .+)$")
-    return [key for key in config if pattern.match(key)]
+    return [key for key in config if key.partition(" ")[0] == domain]
