@@ -1134,7 +1134,7 @@ async def async_process_component_config(  # noqa: C901
             except vol.Invalid as ex:
                 async_log_schema_error(
                     ex,
-                    f"{domain}.{p_name}",
+                    f"{p_name}.{domain}",
                     p_config,
                     hass,
                     p_integration.documentation,
