@@ -19,6 +19,7 @@ from .const import (
 )
 from .core import CALLBACK_TYPE, DOMAIN as HOMEASSISTANT_DOMAIN, HomeAssistant, callback
 from .exceptions import DependencyError, HomeAssistantError
+from .helpers import translation
 from .helpers.issue_registry import IssueSeverity, async_create_issue
 from .helpers.typing import ConfigType
 from .util import dt as dt_util, ensure_unique_string
@@ -300,7 +301,15 @@ async def _async_setup_component(
 
     start = timer()
     _LOGGER.info("Setting up %s", domain)
-    with async_start_setup(hass, [domain]):
+    load_translations_task: asyncio.Task[None] | None = None
+    integration_set = {domain}
+
+    if not translation.async_translations_loaded(hass, integration_set):
+        load_translations_task = asyncio.create_task(
+            translation.async_load_integrations(hass, integration_set)
+        )
+
+    with async_start_setup(hass, integration_set):
         if hasattr(component, "PLATFORM_SCHEMA"):
             # Entity components have their own warning
             warn_task = None
@@ -350,6 +359,8 @@ async def _async_setup_component(
             end = timer()
             if warn_task:
                 warn_task.cancel()
+            if load_translations_task:
+                await load_translations_task
         _LOGGER.info("Setup of domain %s took %.1f seconds", domain, end - start)
 
         if result is False:
